@@ -16,17 +16,18 @@ Implementation guide
 13. Create security group and allow the ALB to talk to the Nginx proxy server. (Nginx). Also allow Bastion to talk to nginx
 14. Create an External facing Application Load Balancer (ALB)
 15. Create a Listener (port 80) and target group
-16. Update VPC settings to enable DNS Hostnames
+16. Update VPC settings to enable DNS Hostnames 
 17. Update public subnet settings to auto assign public IP address
 18. Create Key Pair for SSH
 19. Create a Launch Template for Bastion (Use a redhat based AMI) (include subnet settings for auto scaling in templates) 
-20. Create ASG for Bastion
+20. Create ASG for Bastion (attach to existing loadbalancer)
 21. Connect to Bastion server launched in the Public Subnet over SSH
 22. Create a Launch Template for nginx (Use a Ubuntu based AMI) (Private network)
 22. Create ASG for nginx
 23. Connect to the nginx server launched in the Private Subnet (Use SSH Agent to forward the public IP)
 
 ## SSH Config Sample
+```
 Host *
      StrictHostKeyChecking no
 
@@ -52,6 +53,8 @@ Host tooling
     User ec2-user
     IdentityFile ~/Downloads/temp-delete.cer
     ProxyCommand ssh bastion -W %h:%p
+
+```
 
 
 24. Ensure that the nginx Target group is healthy
@@ -82,7 +85,8 @@ sudo unlink /etc/nginx/sites-enabled/default
 sudo vi /etc/nginx/sites-available/tooling-reverse-proxy.conf
 
 ## Configure Tooling Reverse Proxy
-
+mytoolz.tk
+/etc/nginx/nginx.conf
 server {
     listen 80;
     server_name tooling.dev.darey.io;
@@ -115,11 +119,55 @@ systemctl reload nginx
 39. Configure Tooling and Wordpress (A simulation)
 
 ## Userdata for nginx
+
+```
+#!/usr/bin/bash
 sudo yum update -y
 sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 sudo yum install -y dnf-utils http://rpms.remirepo.net/enterprise/remi-release-8.rpm
 sudo yum install -y nginx git
 sudo systemctl restart nginx
+
+
+sudo yum install wget vim python3 telnet htop git mysql net-tools chrony -y
+
+systemctl start chronyd
+
+systemctl enable chronyd
+
+Configure Selinux Policies For the Webservers and Nginx Servers
+
+setsebool -P httpd_can_network_connect=1
+setsebool -P httpd_can_network_connect_db=1
+setsebool -P httpd_execmem=1
+setsebool -P httpd_use_nfs 1
+
+
+This section will install Amazon EFS utils for mounting the target on the Elastic file system
+
+git clone https://github.com/aws/efs-utils
+
+cd efs-utils
+
+sudo yum install -y make
+
+sudo yum install -y rpm-build
+
+make rpm 
+
+sudo yum install -y  ./build/amazon-efs-utils*rpm
+
+Seting up self-signed certificate for the Nginx instance
+sudo mkdir /etc/ssl/private
+
+sudo chmod 700 /etc/ssl/private
+
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/pbl.key -out /etc/ssl/certs/pbl.crt (generate key and cert)
+
+sudo openssl dhparam -out /etc/ssl/certs/dhparam.pem 2048
+```
+
+
 ### Update the web page  
 sudo vi /usr/share/nginx/html/index.html
 
@@ -192,6 +240,8 @@ Ensure to configure /etc/fstab after mounting EFS
 
 
 Annex
+
+eval $(ssh-agent)
 
 Enabling ssh-agent without using the SSH config file. (Although not recommended. Use SSH Config)
 
