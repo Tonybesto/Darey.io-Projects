@@ -73,7 +73,7 @@ echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu trusty/mongodb-org/
 
 **`sudo apt install -y mongodb`**
 
-![Mongodb install](./Images/Mongodb%20install.png)
+![Mongodb install](./Images/mongodb%20install.PNG)
 
 
 **Start The server**
